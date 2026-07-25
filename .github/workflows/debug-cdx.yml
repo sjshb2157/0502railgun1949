@@ -12,33 +12,52 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: probe CDX API (raw headers + body)
+      - name: probe multiple CDX variants
         run: |
           set +e
-          URL="https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=5"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
           {
             echo "=== runner outbound IP ==="
             curl -s https://ifconfig.me
             echo ""
-            echo "=== curl -v (full request/response trace) ==="
-            curl -v -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
-              -H "Referer: https://web.archive.org/" \
-              "$URL" -o _debug_cdx_body.txt 2>&1
+
             echo ""
-            echo "=== body (first 2000 bytes) ==="
-            head -c 2000 _debug_cdx_body.txt
+            echo "########## TEST 1: 控制组 - reddit.com 简单查询（无 filter/matchType） ##########"
+            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
+              "https://web.archive.org/cdx/search/cdx?url=reddit.com&output=json&limit=3"
+
             echo ""
-            echo "=== retry after 5s, second attempt (check if transient) ==="
-            sleep 5
-            curl -sv -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
-              -H "Referer: https://web.archive.org/" \
-              "$URL" -o _debug_cdx_body2.txt 2>&1
+            echo "########## TEST 2: 目标账号 - 不带 filter，只用 matchType=prefix ##########"
+            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
+              "https://web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&limit=3"
+
+            echo ""
+            echo "########## TEST 3: 目标账号 - 不带 matchType，只用 filter ##########"
+            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
+              "https://web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&output=json&filter=mimetype:application/json&limit=3"
+
+            echo ""
+            echo "########## TEST 4: 目标账号 - 原始完整参数组合（复现问题） ##########"
+            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
+              "https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=3"
+
+            echo ""
+            echo "########## TEST 5: x.com 域名替代 twitter.com ##########"
+            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
+              "https://web.archive.org/cdx/search/cdx?url=x.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=3"
+
+            echo ""
+            echo "########## TEST 6: 换个已知肯定有大量存档的账号 twitter.com/elonmusk ##########"
+            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
+              "https://web.archive.org/cdx/search/cdx?url=twitter.com/elonmusk/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=3"
+
           } > _debug_cdx.txt
+          cat _debug_cdx.txt
 
       - name: commit debug output
         run: |
           git config user.name "debug-bot"
           git config user.email "debug-bot@example.com"
-          git add _debug_cdx.txt _debug_cdx_body.txt _debug_cdx_body2.txt || true
-          git commit -m "debug: cdx probe output" || echo "nothing to commit"
+          git add _debug_cdx.txt || true
+          git commit -m "debug: cdx variant probe" || echo "nothing to commit"
           git push
