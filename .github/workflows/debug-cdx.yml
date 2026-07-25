@@ -12,34 +12,29 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: AB test limit param same IP
+      - name: header AB test same IP
         run: |
           set +e
           python3 - > _debug_cdx_result.txt 2>&1 << 'PYEOF'
           import requests, time
 
           CDX_BASE_URL = "https://web.archive.org/cdx/search/cdx"
-          HEADERS = {
-              "User-Agent": (
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/124.0.0.0 Safari/537.36"
-              ),
-              "Referer": "https://web.archive.org/",
-          }
-          base_params = {
+          params = {
               "url": "twitter.com/0502railgun1949/status/",
               "matchType": "prefix",
               "output": "json",
               "filter": "mimetype:application/json",
+              "limit": "5",
           }
 
-          def probe(name, params):
+          def probe(name, headers):
               sess = requests.Session()
-              sess.headers.update(HEADERS)
+              if headers:
+                  sess.headers.update(headers)
               try:
                   resp = sess.get(CDX_BASE_URL, params=params, timeout=60)
                   print('[' + name + '] status_code:', resp.status_code)
+                  print('[' + name + '] sent headers:', dict(sess.headers))
                   resp.raise_for_status()
                   rows = resp.json()
                   n = len(rows) - 1 if isinstance(rows, list) else 'N/A'
@@ -47,27 +42,28 @@ jobs:
               except Exception as e:
                   print('[' + name + '] FAILED:', type(e).__name__, e)
 
-          print('=== A: no limit (original script params) ===')
-          probe('A-no-limit', dict(base_params))
+          print('=== TEST 1: requests default headers (no fake UA, no Referer) ===')
+          probe('1-default', None)
           time.sleep(2)
           print('')
-          print('=== B: limit=5 ===')
-          p2 = dict(base_params); p2['limit'] = '5'
-          probe('B-limit-5', p2)
+          print('=== TEST 2: fake browser UA + Referer (same as archive.py) ===')
+          fake = {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Referer': 'https://web.archive.org/',
+          }
+          probe('2-fake-browser', fake)
           time.sleep(2)
           print('')
-          print('=== C: limit=100 ===')
-          p3 = dict(base_params); p3['limit'] = '100'
-          probe('C-limit-100', p3)
+          print('=== TEST 3: only UA (curl-like), no Referer ===')
+          probe('3-curl-ua-only', {'User-Agent': 'curl/8.5.0'})
           time.sleep(2)
           print('')
-          print('=== D: no limit retry (confirm not one-off) ===')
-          probe('D-no-limit-retry', dict(base_params))
+          print('=== TEST 4: fake UA but no Referer ===')
+          probe('4-fakeua-noreferer', {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'})
           time.sleep(2)
           print('')
-          print('=== E: no filter, limit=5 ===')
-          p5 = {'url': base_params['url'], 'matchType': 'prefix', 'output': 'json', 'limit': '5'}
-          probe('E-nofilter-limit5', p5)
+          print('=== TEST 5: default headers again (confirm not one-off) ===')
+          probe('5-default-retry', None)
           PYEOF
           echo '=== runner IP ===' >> _debug_cdx_result.txt
           curl -s https://ifconfig.me >> _debug_cdx_result.txt
@@ -77,14 +73,14 @@ jobs:
       - name: append to history log
         run: |
           TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          echo "===== A/B RUN AT $TS =====" >> _debug_ab_history.txt
-          cat _debug_cdx_result.txt >> _debug_ab_history.txt
-          echo "" >> _debug_ab_history.txt
+          echo "===== HEADER AB RUN AT $TS =====" >> _debug_header_history.txt
+          cat _debug_cdx_result.txt >> _debug_header_history.txt
+          echo "" >> _debug_header_history.txt
 
       - name: commit debug output
         run: |
           git config user.name "debug-bot"
           git config user.email "debug-bot@example.com"
-          git add _debug_ab_history.txt || true
-          git commit -m "debug: A/B limit param test" || echo "nothing to commit"
+          git add _debug_header_history.txt || true
+          git commit -m "debug: header AB test" || echo "nothing to commit"
           git push
