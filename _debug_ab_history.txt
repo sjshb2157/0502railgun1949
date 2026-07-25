@@ -1,0 +1,23 @@
+===== A/B RUN AT 2026-07-25T06:41:18Z =====
+=== A: no limit (original script params) ===
+[A-no-limit] status_code: 498
+[A-no-limit] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson
+
+=== B: limit=5 ===
+[B-limit-5] status_code: 498
+[B-limit-5] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=5
+
+=== C: limit=100 ===
+[C-limit-100] status_code: 498
+[C-limit-100] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=100
+
+=== D: no limit retry (confirm not one-off) ===
+[D-no-limit-retry] status_code: 498
+[D-no-limit-retry] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson
+
+=== E: no filter, limit=5 ===
+[E-nofilter-limit5] status_code: 498
+[E-nofilter-limit5] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&limit=5
+=== runner IP ===
+52.155.33.245
+
