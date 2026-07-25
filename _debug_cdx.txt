@@ -1,20 +1,53 @@
 === runner outbound IP ===
-48.217.108.247
+20.3.221.178
 
-########## TEST 1: 控制组 - reddit.com 简单查询（无 filter/matchType） ##########
-HTTP_CODE:498
+########## 对照：直连 archive.org（预期 498） ##########
+HTTP_CODE:200
+--- direct body (first 500 bytes) ---
+[["urlkey","timestamp","original","mimetype","statuscode","digest","length"],
+["com,twitter)/0502railgun1949/status/1786229266029642100","20240503030018","https://twitter.com/0502railgun1949/status/1786229266029642100","application/json","-","KMZJYUX3WBQKIUODNE5OWRLS53HPQXC4","1416"],
+["com,twitter)/0502railgun1949/status/1786340855592489042","20240503102343","https://twitter.com/0502railgun1949/status/1786340855592489042","application/json","-","O744RVTQKVBSDFRCJZHVR4P4AJB4BIBM","1246"],
+["com,
 
-########## TEST 2: 目标账号 - 不带 filter，只用 matchType=prefix ##########
+########## 测试：走 Cloudflare Worker 代理 ##########
 HTTP_CODE:498
+--- proxy body (first 1000 bytes) ---
+<html>
+<head><title>404 Not Found</title></head>
+<body>
+<center><h1>404 Not Found</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
 
-########## TEST 3: 目标账号 - 不带 matchType，只用 filter ##########
-HTTP_CODE:498
 
-########## TEST 4: 目标账号 - 原始完整参数组合（复现问题） ##########
-HTTP_CODE:498
-
-########## TEST 5: x.com 域名替代 twitter.com ##########
-HTTP_CODE:498
-
-########## TEST 6: 换个已知肯定有大量存档的账号 twitter.com/elonmusk ##########
-HTTP_CODE:498
+########## 测试：走代理 -v 详细信息 ##########
+* using HTTP/2
+* [HTTP/2] [1] OPENED stream for https://cdx-proxy.1290848232a.workers.dev/web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5
+* [HTTP/2] [1] [:method: GET]
+* [HTTP/2] [1] [:scheme: https]
+* [HTTP/2] [1] [:authority: cdx-proxy.1290848232a.workers.dev]
+* [HTTP/2] [1] [:path: /web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5]
+* [HTTP/2] [1] [user-agent: curl/8.5.0]
+* [HTTP/2] [1] [accept: */*]
+> GET /web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5 HTTP/2
+> Host: cdx-proxy.1290848232a.workers.dev
+> User-Agent: curl/8.5.0
+> Accept: */*
+> 
+< HTTP/2 498 
+< date: Sat, 25 Jul 2026 06:31:56 GMT
+< content-type: text/html
+< cf-ray: a2091fe158cb75fa-SEA
+< cf-cache-status: DYNAMIC
+< server: cloudflare
+< report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=L8CqNLWUFs7b9dbIjZ2eFj%2Bf%2FMb94%2BIH8bCMODjJJImyxvUeMh3D9%2FHkr3s0CnQTlLSxsUILQ4mu45pzSs5dvZdEyU4WlQhFAwBqC4I6k3%2B%2Fz%2FJvWATpsKEb3nbyPKoFBiDRysannzRGTdWzbcDNtxIz0v0%3D"}]}
+< nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+< alt-svc: h3=":443"; ma=86400
+< 
