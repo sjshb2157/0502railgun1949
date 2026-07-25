@@ -1,0 +1,6 @@
+===== RUN AT 2026-07-25T06:37:26Z =====
+status_code: 498
+FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson
+=== runner IP ===
+135.119.38.211
+
