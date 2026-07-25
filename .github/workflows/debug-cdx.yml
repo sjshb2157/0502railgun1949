@@ -12,43 +12,56 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: probe via Cloudflare Worker proxy
+      - name: exact replica of cmd_fetch_cdx request
         run: |
           set +e
-          PROXY_BASE="https://cdx-proxy.1290848232a.workers.dev"
-          DIRECT_URL="https://web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5"
-          PROXY_URL="${PROXY_BASE}/web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5"
+          python3 - > _debug_cdx_result.txt 2>&1 << 'PYEOF'
+          import requests
 
-          {
-            echo "=== runner outbound IP ==="
-            curl -s https://ifconfig.me
-            echo ""
+          CDX_BASE_URL = "https://web.archive.org/cdx/search/cdx"
+          HEADERS = {
+              "User-Agent": (
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/124.0.0.0 Safari/537.36"
+              ),
+              "Referer": "https://web.archive.org/",
+          }
+          params = {
+              "url": "twitter.com/0502railgun1949/status/",
+              "matchType": "prefix",
+              "output": "json",
+              "filter": "mimetype:application/json",
+          }
 
-            echo ""
-            echo "########## 对照：直连 archive.org（预期 498） ##########"
-            curl -s -o /tmp/direct_body.txt -w "HTTP_CODE:%{http_code}\n" "$DIRECT_URL"
-            echo "--- direct body (first 500 bytes) ---"
-            head -c 500 /tmp/direct_body.txt
-            echo ""
+          sess = requests.Session()
+          sess.headers.update(HEADERS)
 
-            echo ""
-            echo "########## 测试：走 Cloudflare Worker 代理 ##########"
-            curl -s -o /tmp/proxy_body.txt -w "HTTP_CODE:%{http_code}\n" "$PROXY_URL"
-            echo "--- proxy body (first 1000 bytes) ---"
-            head -c 1000 /tmp/proxy_body.txt
-            echo ""
+          try:
+              resp = sess.get(CDX_BASE_URL, params=params, timeout=60)
+              print("status_code:", resp.status_code)
+              resp.raise_for_status()
+              rows = resp.json()
+              print("SUCCESS, snapshot rows:", len(rows) - 1 if isinstance(rows, list) else "N/A")
+          except Exception as e:
+              print("FAILED:", type(e).__name__, e)
+          PYEOF
+          echo "=== runner IP ===" >> _debug_cdx_result.txt
+          curl -s https://ifconfig.me >> _debug_cdx_result.txt
+          echo "" >> _debug_cdx_result.txt
+          cat _debug_cdx_result.txt
 
-            echo ""
-            echo "########## 测试：走代理 -v 详细信息 ##########"
-            curl -sv -o /dev/null "$PROXY_URL" 2>&1 | grep -E "^[<>]|HTTP/"
-
-          } > _debug_cdx.txt
-          cat _debug_cdx.txt
+      - name: append to history log
+        run: |
+          TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          echo "===== RUN AT $TS =====" >> _debug_cdx_history.txt
+          cat _debug_cdx_result.txt >> _debug_cdx_history.txt
+          echo "" >> _debug_cdx_history.txt
 
       - name: commit debug output
         run: |
           git config user.name "debug-bot"
           git config user.email "debug-bot@example.com"
-          git add _debug_cdx.txt || true
-          git commit -m "debug: cdx via cloudflare worker proxy" || echo "nothing to commit"
+          git add _debug_cdx_history.txt || true
+          git commit -m "debug: exact cmd_fetch_cdx replica probe" || echo "nothing to commit"
           git push
