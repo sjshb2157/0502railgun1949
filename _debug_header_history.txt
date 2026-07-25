@@ -1,0 +1,28 @@
+===== HEADER AB RUN AT 2026-07-25T06:45:52Z =====
+=== TEST 1: requests default headers (no fake UA, no Referer) ===
+[1-default] status_code: 200
+[1-default] sent headers: {'User-Agent': 'python-requests/2.31.0', 'Accept-Encoding': 'gzip, deflate, zstd', 'Accept': '*/*', 'Connection': 'keep-alive'}
+[1-default] SUCCESS, rows: 5
+
+=== TEST 2: fake browser UA + Referer (same as archive.py) ===
+[2-fake-browser] status_code: 498
+[2-fake-browser] sent headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36', 'Accept-Encoding': 'gzip, deflate, zstd', 'Accept': '*/*', 'Connection': 'keep-alive', 'Referer': 'https://web.archive.org/'}
+[2-fake-browser] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=5
+
+=== TEST 3: only UA (curl-like), no Referer ===
+[3-curl-ua-only] status_code: 200
+[3-curl-ua-only] sent headers: {'User-Agent': 'curl/8.5.0', 'Accept-Encoding': 'gzip, deflate, zstd', 'Accept': '*/*', 'Connection': 'keep-alive'}
+[3-curl-ua-only] SUCCESS, rows: 5
+
+=== TEST 4: fake UA but no Referer ===
+[4-fakeua-noreferer] status_code: 498
+[4-fakeua-noreferer] sent headers: {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36', 'Accept-Encoding': 'gzip, deflate, zstd', 'Accept': '*/*', 'Connection': 'keep-alive'}
+[4-fakeua-noreferer] FAILED: HTTPError 498 Client Error:  for url: https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=5
+
+=== TEST 5: default headers again (confirm not one-off) ===
+[5-default-retry] status_code: 200
+[5-default-retry] sent headers: {'User-Agent': 'python-requests/2.31.0', 'Accept-Encoding': 'gzip, deflate, zstd', 'Accept': '*/*', 'Connection': 'keep-alive'}
+[5-default-retry] SUCCESS, rows: 5
+=== runner IP ===
+172.214.46.100
+
