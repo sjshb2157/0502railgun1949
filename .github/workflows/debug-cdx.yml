@@ -1,0 +1,57 @@
+name: debug-cdx
+on:
+  workflow_dispatch: {}
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: probe CDX API (raw headers + body)
+        run: |
+          set +e
+          URL="https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=5"
+          echo "runner outbound IP:" > _debug_cdx.txt
+          curl -s https://ifconfig.me >> _debug_cdx.txt
+          echo "" >> _debug_cdx.txt
+          echo "=== curl -v ===" >> _debug_cdx.txt
+          curl -v -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" \
+            -H "Referer: https://web.archive.org/" \
+            "$URL" -o _debug_cdx_body.txt 2>> _debug_cdx.txt
+          echo "=== body (first 2000 bytes) ===" >> _debug_cdx.txt
+          head -c 2000 _debug_cdx_body.txt >> _debug_cdx.txt
+          echo "" >> _debug_cdx.txt
+          echo "=== python requests attempt ===" >> _debug_cdx.txt
+          python3 - >> _debug_cdx.txt 2>&1 <<'PYEOF'
+import requests
+url = "https://web.archive.org/cdx/search/cdx"
+params = {
+    "url": "twitter.com/0502railgun1949/status/",
+    "matchType": "prefix",
+    "output": "json",
+    "filter": "mimetype:application/json",
+    "limit": "5",
+}
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Referer": "https://web.archive.org/",
+}
+try:
+    r = requests.get(url, params=params, headers=headers, timeout=30)
+    print("status_code:", r.status_code)
+    print("reason:", repr(r.reason))
+    print("headers:", dict(r.headers))
+    print("text[:1000]:", r.text[:1000])
+except Exception as e:
+    print("EXCEPTION:", type(e).__name__, e)
+PYEOF
+
+      - name: commit debug output
+        run: |
+          git config user.name "debug-bot"
+          git config user.email "debug-bot@example.com"
+          git add _debug_cdx.txt || true
+          git commit -m "debug: cdx probe output" || echo "nothing to commit"
+          git push || echo "push failed"
