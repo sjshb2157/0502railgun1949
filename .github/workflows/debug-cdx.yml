@@ -2,6 +2,9 @@ name: debug-cdx
 on:
   workflow_dispatch: {}
 
+permissions:
+  contents: write
+
 jobs:
   debug:
     runs-on: ubuntu-latest
@@ -38,4 +41,4 @@ jobs:
           git config user.email "debug-bot@example.com"
           git add _debug_cdx.txt _debug_cdx_body.txt _debug_cdx_body2.txt || true
           git commit -m "debug: cdx probe output" || echo "nothing to commit"
-          git push || echo "push failed"
+          git push
