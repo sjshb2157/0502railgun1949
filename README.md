@@ -3,7 +3,7 @@
 本仓库为 [@0502railgun1949](https://twitter.com/0502railgun1949) 的 Twitter/X 推文存档，
 通过 [Wayback Machine](https://web.archive.org) 抓取，使用 GitHub Pages 自动部署。
 
-🔗 在线阅读：**https://TwitterArchiver.github.io/0502railgun1949/**
+🔗 在线阅读：**https://sjshb2157.github.io/0502railgun1949/**
 
 ---
 
