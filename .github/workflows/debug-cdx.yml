@@ -12,44 +12,35 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
-      - name: probe multiple CDX variants
+      - name: probe via Cloudflare Worker proxy
         run: |
           set +e
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+          PROXY_BASE="https://cdx-proxy.1290848232a.workers.dev"
+          DIRECT_URL="https://web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5"
+          PROXY_URL="${PROXY_BASE}/web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=5"
+
           {
             echo "=== runner outbound IP ==="
             curl -s https://ifconfig.me
             echo ""
 
             echo ""
-            echo "########## TEST 1: 控制组 - reddit.com 简单查询（无 filter/matchType） ##########"
-            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
-              "https://web.archive.org/cdx/search/cdx?url=reddit.com&output=json&limit=3"
+            echo "########## 对照：直连 archive.org（预期 498） ##########"
+            curl -s -o /tmp/direct_body.txt -w "HTTP_CODE:%{http_code}\n" "$DIRECT_URL"
+            echo "--- direct body (first 500 bytes) ---"
+            head -c 500 /tmp/direct_body.txt
+            echo ""
 
             echo ""
-            echo "########## TEST 2: 目标账号 - 不带 filter，只用 matchType=prefix ##########"
-            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
-              "https://web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&matchType=prefix&output=json&limit=3"
+            echo "########## 测试：走 Cloudflare Worker 代理 ##########"
+            curl -s -o /tmp/proxy_body.txt -w "HTTP_CODE:%{http_code}\n" "$PROXY_URL"
+            echo "--- proxy body (first 1000 bytes) ---"
+            head -c 1000 /tmp/proxy_body.txt
+            echo ""
 
             echo ""
-            echo "########## TEST 3: 目标账号 - 不带 matchType，只用 filter ##########"
-            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
-              "https://web.archive.org/cdx/search/cdx?url=twitter.com/0502railgun1949/status/&output=json&filter=mimetype:application/json&limit=3"
-
-            echo ""
-            echo "########## TEST 4: 目标账号 - 原始完整参数组合（复现问题） ##########"
-            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
-              "https://web.archive.org/cdx/search/cdx?url=twitter.com%2F0502railgun1949%2Fstatus%2F&matchType=prefix&output=json&filter=mimetype%3Aapplication%2Fjson&limit=3"
-
-            echo ""
-            echo "########## TEST 5: x.com 域名替代 twitter.com ##########"
-            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
-              "https://web.archive.org/cdx/search/cdx?url=x.com/0502railgun1949/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=3"
-
-            echo ""
-            echo "########## TEST 6: 换个已知肯定有大量存档的账号 twitter.com/elonmusk ##########"
-            curl -s -o /dev/null -w "HTTP_CODE:%{http_code}\n" -A "$UA" -H "Referer: https://web.archive.org/" \
-              "https://web.archive.org/cdx/search/cdx?url=twitter.com/elonmusk/status/&matchType=prefix&output=json&filter=mimetype:application/json&limit=3"
+            echo "########## 测试：走代理 -v 详细信息 ##########"
+            curl -sv -o /dev/null "$PROXY_URL" 2>&1 | grep -E "^[<>]|HTTP/"
 
           } > _debug_cdx.txt
           cat _debug_cdx.txt
@@ -59,5 +50,5 @@ jobs:
           git config user.name "debug-bot"
           git config user.email "debug-bot@example.com"
           git add _debug_cdx.txt || true
-          git commit -m "debug: cdx variant probe" || echo "nothing to commit"
+          git commit -m "debug: cdx via cloudflare worker proxy" || echo "nothing to commit"
           git push
